@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, SafeAreaView, StyleSheet, Image } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, KeyboardAvoidingView, ScrollView, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import Constants from 'expo-constants';
 import { createStorage } from '../../src/utils/storage';
@@ -34,31 +35,42 @@ export default function OnboardingScreen() {
   if (step === 'name') {
     return (
       <SafeAreaView style={styles.safe}>
-        <View style={styles.content}>
-          <Image
-            source={require('../../assets/images/icon.png')}
-            style={{ width: 120, height: 120, alignSelf: 'center', borderRadius: 28, marginBottom: 16 }}
-            resizeMode="contain"
-          />
-          <Text style={styles.hero}>Karibu!</Text>
-          <Text style={styles.subtitle}>Welcome to {appName}</Text>
-          <Text style={styles.label}>What should we call you?</Text>
-          <TextInput
-            style={styles.input}
-            value={name}
-            onChangeText={setName}
-            placeholder="Your name"
-            placeholderTextColor={theme.colors.text.secondary}
-            autoFocus
-          />
-          <TouchableOpacity
-            style={[styles.button, !name.trim() && styles.buttonDisabled]}
-            onPress={handleNameNext}
-            disabled={!name.trim()}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+        >
+          <ScrollView
+            contentContainerStyle={{ flexGrow: 1 }}
+            keyboardShouldPersistTaps="handled"
+            bounces={false}
           >
-            <Text style={styles.buttonText}>CONTINUE</Text>
-          </TouchableOpacity>
-        </View>
+            <View style={styles.content}>
+              <Image
+                source={require('../../assets/images/icon.png')}
+                style={{ width: 120, height: 120, alignSelf: 'center', borderRadius: 28, marginBottom: 16 }}
+                resizeMode="contain"
+              />
+              <Text style={styles.hero}>Karibu!</Text>
+              <Text style={styles.subtitle}>Welcome to {appName}</Text>
+              <Text style={styles.label}>What should we call you?</Text>
+              <TextInput
+                style={styles.input}
+                value={name}
+                onChangeText={setName}
+                placeholder="Your name"
+                placeholderTextColor={theme.colors.text.secondary}
+                autoFocus
+              />
+              <TouchableOpacity
+                style={[styles.button, !name.trim() && styles.buttonDisabled]}
+                onPress={handleNameNext}
+                disabled={!name.trim()}
+              >
+                <Text style={styles.buttonText}>CONTINUE</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     );
   }
@@ -95,7 +107,7 @@ export default function OnboardingScreen() {
 function makeStyles(theme: ReturnType<typeof useTheme>) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: theme.colors.background.screen },
-    content: { flex: 1, padding: theme.spacing.xl, justifyContent: 'center', gap: theme.spacing.xl },
+    content: { flexGrow: 1, padding: theme.spacing.xl, justifyContent: 'center', gap: theme.spacing.xl },
     hero: { ...textStyles.hero, color: theme.colors.brand.primary },
     subtitle: { ...textStyles.heading, color: theme.colors.text.primary },
     label: { ...textStyles.label, color: theme.colors.text.secondary },

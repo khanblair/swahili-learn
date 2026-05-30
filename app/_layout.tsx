@@ -3,6 +3,7 @@ import { View, Text, ActivityIndicator } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SQLiteProvider, type SQLiteDatabase } from 'expo-sqlite';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { loadStorage, createStorage } from '../src/utils/storage';
 import { setDb, runMigrations } from '../src/db/schema';
 import { seedWords } from '../src/db/queries/words';
@@ -118,10 +119,12 @@ function AppShell() {
 
 export default function RootLayout() {
   return (
-    <Suspense fallback={<LoadingScreen label="Opening database…" />}>
-      <SQLiteProvider databaseName="swahili.db" onInit={initDatabase} useSuspense>
-        <AppShell />
-      </SQLiteProvider>
-    </Suspense>
+    <SafeAreaProvider>
+      <Suspense fallback={<LoadingScreen label="Opening database…" />}>
+        <SQLiteProvider databaseName="swahili.db" onInit={initDatabase} useSuspense>
+          <AppShell />
+        </SQLiteProvider>
+      </Suspense>
+    </SafeAreaProvider>
   );
 }
