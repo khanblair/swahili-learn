@@ -1,98 +1,113 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import React, { useEffect, useState, useMemo } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, SafeAreaView, StyleSheet } from 'react-native';
+import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../src/hooks/useTheme';
+import { useUserStore } from '../../src/store/useUserStore';
+import { SkillCard } from '../../src/components/SkillCard';
+import { ProgressBar } from '../../src/components/ProgressBar';
+import { units } from '../../src/content/units';
+import { getLessonsByUnit, getUnitCompletionRatio } from '../../src/db/queries/lessons';
+import { getCardCountDue } from '../../src/db/queries/cards';
+import { getLevel } from '../../src/engine/xp';
+import { textStyles } from '../../src/theme/typography';
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const stats = useUserStore(s => s.stats);
+  const todayXP = useUserStore(s => s.todayXP);
+  const [unitProgress, setUnitProgress] = useState<Record<number, number>>({});
+  const [firstLessons, setFirstLessons] = useState<Record<number, number>>({});
+  const [dueCount, setDueCount] = useState(0);
+  const dailyGoal = 20;
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  useEffect(() => {
+    async function loadData() {
+      const progress: Record<number, number> = {};
+      const lessons: Record<number, number> = {};
+      for (const u of units) {
+        progress[u.id] = await getUnitCompletionRatio(u.id);
+        const ls = await getLessonsByUnit(u.id);
+        if (ls.length) lessons[u.id] = ls[0].id;
+      }
+      setUnitProgress(progress);
+      setFirstLessons(lessons);
+      setDueCount(await getCardCountDue());
+    }
+    loadData();
+  }, []);
+
+  const level = getLevel(stats?.total_xp ?? 0);
+  const goalProgress = Math.min(1, todayXP / dailyGoal);
+
+  function isUnitLocked(idx: number) {
+    if (idx === 0) return false;
+    return (unitProgress[units[idx - 1].id] ?? 0) < units[idx].unlockThreshold;
+  }
+
+  function handleUnitPress(unitId: number) {
+    const lessonId = firstLessons[unitId];
+    if (lessonId) router.push({ pathname: '/lesson/[id]', params: { id: lessonId } } as any);
+  }
+
+  return (
+    <SafeAreaView style={styles.safe}>
+      <View style={styles.topBar}>
+        <View style={styles.row}>
+          <Ionicons name="flame" size={22} color={theme.colors.gamification.streak} />
+          <Text style={styles.stat}>{stats?.current_streak ?? 0}</Text>
+        </View>
+        <View style={styles.row}>
+          <Ionicons name="star" size={22} color={theme.colors.gamification.xp} />
+          <Text style={styles.stat}>{stats?.total_xp ?? 0} XP</Text>
+        </View>
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>{level.name}</Text>
+        </View>
+      </View>
+
+      <View style={styles.goalSection}>
+        <Text style={styles.goalLabel}>Daily goal — {todayXP}/{dailyGoal} XP</Text>
+        <ProgressBar progress={goalProgress} />
+      </View>
+
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+        {units.map((unit, idx) => (
+          <SkillCard
+            key={unit.id}
+            title={unit.title}
+            icon={unit.icon}
+            progress={unitProgress[unit.id] ?? 0}
+            locked={isUnitLocked(idx)}
+            onPress={() => handleUnitPress(unit.id)}
+          />
+        ))}
+      </ScrollView>
+
+      {dueCount > 0 && (
+        <TouchableOpacity style={styles.reviewFab} onPress={() => router.push('/review' as any)}>
+          <Ionicons name="book-outline" size={20} color={theme.colors.text.inverse} />
+          <Text style={styles.reviewText}>Review {dueCount} cards</Text>
+        </TouchableOpacity>
+      )}
+    </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});
+function makeStyles(theme: ReturnType<typeof useTheme>) {
+  return StyleSheet.create({
+    safe: { flex: 1, backgroundColor: theme.colors.background.screen },
+    topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.md },
+    row: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
+    stat: { ...textStyles.bodyBold, color: theme.colors.text.primary },
+    badge: { backgroundColor: theme.colors.brand.primary, borderRadius: theme.radius.full, paddingHorizontal: theme.spacing.sm, paddingVertical: 3 },
+    badgeText: { ...textStyles.caption, color: theme.colors.text.inverse, fontWeight: '700' },
+    goalSection: { paddingHorizontal: theme.spacing.lg, marginBottom: theme.spacing.md, gap: theme.spacing.xs },
+    goalLabel: { ...textStyles.label, color: theme.colors.text.secondary },
+    scroll: { flex: 1 },
+    scrollContent: { padding: theme.spacing.lg },
+    reviewFab: { position: 'absolute', bottom: theme.spacing.xxl, alignSelf: 'center', backgroundColor: theme.colors.brand.primary, borderRadius: theme.radius.full, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, paddingHorizontal: theme.spacing.xl, paddingVertical: theme.spacing.md },
+    reviewText: { ...textStyles.bodyBold, color: theme.colors.text.inverse },
+  });
+}
