@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, SafeAreaView, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, SafeAreaView, StyleSheet, Image } from 'react-native';
 import { router } from 'expo-router';
+import Constants from 'expo-constants';
 import { createStorage } from '../../src/utils/storage';
 import { useTheme } from '../../src/hooks/useTheme';
 import { textStyles } from '../../src/theme/typography';
@@ -15,6 +16,8 @@ export default function OnboardingScreen() {
   const [step, setStep] = useState<'name' | 'goal'>('name');
   const [name, setName] = useState('');
   const [goal, setGoal] = useState(20);
+
+  const appName = Constants.expoConfig?.name ?? 'Sema';
 
   function handleNameNext() {
     if (!name.trim()) return;
@@ -32,8 +35,13 @@ export default function OnboardingScreen() {
     return (
       <SafeAreaView style={styles.safe}>
         <View style={styles.content}>
+          <Image
+            source={require('../../assets/images/icon.png')}
+            style={{ width: 120, height: 120, alignSelf: 'center', borderRadius: 28, marginBottom: 16 }}
+            resizeMode="contain"
+          />
           <Text style={styles.hero}>Karibu!</Text>
-          <Text style={styles.subtitle}>Welcome to Swahili Learn</Text>
+          <Text style={styles.subtitle}>Welcome to {appName}</Text>
           <Text style={styles.label}>What should we call you?</Text>
           <TextInput
             style={styles.input}
