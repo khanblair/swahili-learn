@@ -31,8 +31,13 @@ export const useUserStore = create<UserState>((set, get) => ({
   isLoaded: false,
 
   load: async () => {
-    const stats = await getUserStats();
-    set({ stats, isLoaded: true });
+    try {
+      const stats = await getUserStats();
+      set({ stats, isLoaded: true });
+    } catch (e) {
+      console.error('Failed to load user stats:', e);
+      set({ stats: { ...DEFAULT_STATS }, isLoaded: true });
+    }
   },
 
   earnXP: async (amount) => {

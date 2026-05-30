@@ -23,6 +23,17 @@ function buildOptions(correct: string, allWords: Word[]): string[] {
   return shuffle([correct, ...distractors]);
 }
 
+function buildTranslateTiles(word: Word, allWords: Word[]): string[] {
+  const correctTokens = word.english.split(' ');
+  const pool = shuffle(
+    allWords
+      .filter(w => w.id !== word.id)
+      .flatMap(w => w.english.split(' '))
+      .filter(t => !correctTokens.includes(t))
+  ).slice(0, Math.max(3, 6 - correctTokens.length));
+  return shuffle([...correctTokens, ...pool]);
+}
+
 function buildPairs(words: Word[]): Array<{ left: string; right: string }> {
   return shuffle(words.slice(0, 4)).map(w => ({
     left: w.swahili,
@@ -50,6 +61,9 @@ export function buildQueue(words: Word[]): Exercise[] {
 
     const exercise: Exercise = { type, word };
 
+    if (type === 'translate') {
+      exercise.options = buildTranslateTiles(word, shuffled);
+    }
     if (type === 'multiple_choice') {
       exercise.options = buildOptions(word.english, shuffled);
     }

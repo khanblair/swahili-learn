@@ -1,13 +1,13 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useState, useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, SafeAreaView, StyleSheet } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../src/hooks/useTheme';
 import { useUserStore } from '../../src/store/useUserStore';
 import { SkillCard } from '../../src/components/SkillCard';
 import { ProgressBar } from '../../src/components/ProgressBar';
 import { units } from '../../src/content/units';
-import { getLessonsByUnit, getUnitCompletionRatio } from '../../src/db/queries/lessons';
+import { getUnitCompletionRatio } from '../../src/db/queries/lessons';
 import { getCardCountDue } from '../../src/db/queries/cards';
 import { getLevel } from '../../src/engine/xp';
 import { textStyles } from '../../src/theme/typography';
@@ -18,25 +18,21 @@ export default function HomeScreen() {
   const stats = useUserStore(s => s.stats);
   const todayXP = useUserStore(s => s.todayXP);
   const [unitProgress, setUnitProgress] = useState<Record<number, number>>({});
-  const [firstLessons, setFirstLessons] = useState<Record<number, number>>({});
   const [dueCount, setDueCount] = useState(0);
   const dailyGoal = 20;
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     async function loadData() {
       const progress: Record<number, number> = {};
-      const lessons: Record<number, number> = {};
       for (const u of units) {
         progress[u.id] = await getUnitCompletionRatio(u.id);
-        const ls = await getLessonsByUnit(u.id);
-        if (ls.length) lessons[u.id] = ls[0].id;
       }
       setUnitProgress(progress);
-      setFirstLessons(lessons);
       setDueCount(await getCardCountDue());
+      await useUserStore.getState().load();
     }
     loadData();
-  }, []);
+  }, []));
 
   const level = getLevel(stats?.total_xp ?? 0);
   const goalProgress = Math.min(1, todayXP / dailyGoal);
@@ -47,8 +43,7 @@ export default function HomeScreen() {
   }
 
   function handleUnitPress(unitId: number) {
-    const lessonId = firstLessons[unitId];
-    if (lessonId) router.push({ pathname: '/lesson/[id]', params: { id: lessonId } } as any);
+    router.push({ pathname: '/unit/[id]', params: { id: unitId } } as any);
   }
 
   return (

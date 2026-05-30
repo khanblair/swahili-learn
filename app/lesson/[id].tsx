@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, SafeAreaView, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, SafeAreaView, StyleSheet, TouchableOpacity } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../src/hooks/useTheme';
@@ -14,14 +14,12 @@ import { TranslateExercise } from '../../src/components/exercises/TranslateExerc
 import { ListenExercise } from '../../src/components/exercises/ListenExercise';
 import { MultipleChoiceExercise } from '../../src/components/exercises/MultipleChoiceExercise';
 import { MatchPairsExercise } from '../../src/components/exercises/MatchPairsExercise';
-import { getLessonById } from '../../src/db/queries/lessons';
+import { getLessonById, saveLessonProgress } from '../../src/db/queries/lessons';
 import { getWordsByUnit } from '../../src/db/queries/words';
 import { upsertCard, getCardByWordId } from '../../src/db/queries/cards';
 import { buildQueue } from '../../src/engine/lessonQueue';
 import { sm2, newCard, qualityFromCorrect } from '../../src/engine/sm2';
-import { saveLessonProgress } from '../../src/db/queries/lessons';
 import { XP_LESSON_COMPLETE, XP_LESSON_PERFECT_BONUS } from '../../src/engine/xp';
-import { textStyles } from '../../src/theme/typography';
 
 export default function LessonScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -32,6 +30,7 @@ export default function LessonScreen() {
   const { recordActivity } = useStreak();
   const [loaded, setLoaded] = useState(false);
   const [showXP, setShowXP] = useState(false);
+  const [finishing, setFinishing] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -46,28 +45,55 @@ export default function LessonScreen() {
     return () => session.reset();
   }, [id]);
 
+  async function finishLesson(hearts: number) {
+    if (finishing) return;
+    setFinishing(true);
+    const perfect = hearts === 5;
+    const xp = XP_LESSON_COMPLETE + (perfect ? XP_LESSON_PERFECT_BONUS : 0);
+    try {
+      await earnXP(xp);
+      await saveLessonProgress({
+        lesson_id: Number(id),
+        completed: true,
+        perfect,
+        completed_at: Date.now(),
+        xp_earned: xp,
+      });
+      await recordActivity();
+    } catch (e) {
+      console.error('[Lesson] failed to save progress:', e);
+    }
+    setShowXP(true);
+    setTimeout(() => router.back(), 1800);
+  }
+
   async function handleContinue() {
-    const { feedbackState, queue, currentIndex, hearts, xpEarned } = session;
+    const { feedbackState, queue, currentIndex, hearts } = session;
     const exercise = queue[currentIndex];
     const correct = feedbackState === 'correct';
 
-    const existing = await getCardByWordId(exercise.word.id);
-    const card = existing ?? newCard(exercise.word.id);
-    const updated = sm2(card, qualityFromCorrect(correct));
-    await upsertCard(updated);
-
-    if (session.isComplete || currentIndex + 1 >= queue.length) {
-      const perfect = hearts === 5;
-      const xp = XP_LESSON_COMPLETE + (perfect ? XP_LESSON_PERFECT_BONUS : 0);
-      await earnXP(xp);
-      await saveLessonProgress({ lesson_id: Number(id), completed: true, perfect, completed_at: Date.now(), xp_earned: xp });
-      await recordActivity();
-      setShowXP(true);
-      setTimeout(() => router.back(), 1800);
-      return;
+    try {
+      const existing = await getCardByWordId(exercise.word.id);
+      const card = existing ?? newCard(exercise.word.id);
+      await upsertCard(sm2(card, qualityFromCorrect(correct)));
+    } catch (e) {
+      console.error('[Lesson] card upsert failed:', e);
     }
 
+    if (currentIndex + 1 >= queue.length) {
+      await finishLesson(hearts);
+      return;
+    }
     session.nextExercise();
+  }
+
+  async function handleMatchPairsComplete() {
+    const { currentIndex, queue, hearts } = session;
+    if (currentIndex + 1 >= queue.length) {
+      await finishLesson(hearts);
+    } else {
+      session.nextExercise();
+    }
   }
 
   if (!loaded || !session.queue.length) return null;
@@ -84,7 +110,7 @@ export default function LessonScreen() {
       case 'multiple_choice':
         return <MultipleChoiceExercise exercise={exercise} selectedAnswer={session.currentAnswer as string} feedbackState={session.feedbackState} onSelect={session.setAnswer} />;
       case 'match_pairs':
-        return <MatchPairsExercise exercise={exercise} onComplete={session.nextExercise} />;
+        return <MatchPairsExercise exercise={exercise} onComplete={handleMatchPairsComplete} />;
     }
   }
 
@@ -117,7 +143,7 @@ export default function LessonScreen() {
         />
       )}
 
-      <XPBurst amount={2} visible={showXP} />
+      <XPBurst amount={XP_LESSON_COMPLETE} visible={showXP} />
     </SafeAreaView>
   );
 }

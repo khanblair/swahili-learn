@@ -1,11 +1,13 @@
-import * as SQLite from 'expo-sqlite';
+import type * as SQLite from 'expo-sqlite';
 
 let _db: SQLite.SQLiteDatabase | null = null;
 
-export async function getDb(): Promise<SQLite.SQLiteDatabase> {
-  if (_db) return _db;
-  _db = await SQLite.openDatabaseAsync('swahili.db');
-  await _db.execAsync('PRAGMA journal_mode = WAL;');
+export function setDb(db: SQLite.SQLiteDatabase): void {
+  _db = db;
+}
+
+export function getDb(): SQLite.SQLiteDatabase {
+  if (!_db) throw new Error('DB not initialized — SQLiteProvider not mounted yet');
   return _db;
 }
 
@@ -21,7 +23,6 @@ export async function runMigrations(db: SQLite.SQLiteDatabase): Promise<void> {
       example_sw TEXT NOT NULL,
       example_en TEXT NOT NULL
     );
-
     CREATE TABLE IF NOT EXISTS user_cards (
       word_id INTEGER PRIMARY KEY,
       content_type TEXT NOT NULL DEFAULT 'word',
@@ -31,7 +32,6 @@ export async function runMigrations(db: SQLite.SQLiteDatabase): Promise<void> {
       next_review_ts INTEGER NOT NULL DEFAULT 0,
       last_reviewed_ts INTEGER NOT NULL DEFAULT 0
     );
-
     CREATE TABLE IF NOT EXISTS lessons (
       id INTEGER PRIMARY KEY,
       unit_id INTEGER NOT NULL,
@@ -39,7 +39,6 @@ export async function runMigrations(db: SQLite.SQLiteDatabase): Promise<void> {
       lesson_index INTEGER NOT NULL,
       exercise_count INTEGER NOT NULL DEFAULT 10
     );
-
     CREATE TABLE IF NOT EXISTS lesson_progress (
       lesson_id INTEGER PRIMARY KEY,
       completed INTEGER NOT NULL DEFAULT 0,
@@ -47,7 +46,6 @@ export async function runMigrations(db: SQLite.SQLiteDatabase): Promise<void> {
       completed_at INTEGER,
       xp_earned INTEGER NOT NULL DEFAULT 0
     );
-
     CREATE TABLE IF NOT EXISTS user_stats (
       id INTEGER PRIMARY KEY DEFAULT 1,
       total_xp INTEGER NOT NULL DEFAULT 0,
@@ -58,7 +56,6 @@ export async function runMigrations(db: SQLite.SQLiteDatabase): Promise<void> {
       hearts INTEGER NOT NULL DEFAULT 5,
       hearts_refill_ts INTEGER NOT NULL DEFAULT 0
     );
-
     CREATE TABLE IF NOT EXISTS stories (
       id INTEGER PRIMARY KEY,
       title TEXT NOT NULL,
@@ -67,7 +64,6 @@ export async function runMigrations(db: SQLite.SQLiteDatabase): Promise<void> {
       completed INTEGER NOT NULL DEFAULT 0,
       completed_at INTEGER
     );
-
     CREATE TABLE IF NOT EXISTS story_lines (
       id INTEGER PRIMARY KEY,
       story_id INTEGER NOT NULL,

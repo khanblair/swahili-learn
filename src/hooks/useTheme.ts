@@ -1,8 +1,8 @@
 import { useColorScheme } from 'react-native';
-import { createMMKV } from 'react-native-mmkv';
+import { createStorage } from '../utils/storage';
 import { lightTheme, darkTheme, type Theme } from '../theme';
 
-const storage = createMMKV({ id: 'settings' });
+const storage = createStorage('settings');
 
 export function useTheme(): Theme {
   const systemScheme = useColorScheme();

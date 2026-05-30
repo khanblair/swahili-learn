@@ -1,12 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, SafeAreaView, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
-import { createMMKV } from 'react-native-mmkv';
+import { createStorage } from '../../src/utils/storage';
 import { useTheme } from '../../src/hooks/useTheme';
 import { textStyles } from '../../src/theme/typography';
 
-const storage = createMMKV({ id: 'settings' });
-const appStorage = createMMKV({ id: 'app' });
+const settings = createStorage('settings');
+const appStorage = createStorage('app');
 const GOALS = [10, 20, 30];
 
 export default function OnboardingScreen() {
@@ -18,12 +18,12 @@ export default function OnboardingScreen() {
 
   function handleNameNext() {
     if (!name.trim()) return;
-    storage.set('display_name', name.trim());
+    settings.set('display_name', name.trim());
     setStep('goal');
   }
 
   function handleFinish() {
-    storage.set('daily_goal', goal);
+    settings.set('daily_goal', goal);
     appStorage.set('onboarded', true);
     router.replace('/(tabs)' as any);
   }

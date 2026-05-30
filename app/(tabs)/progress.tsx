@@ -1,5 +1,6 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useState, useMemo } from 'react';
 import { View, Text, ScrollView, SafeAreaView, StyleSheet } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../src/hooks/useTheme';
 import { useUserStore } from '../../src/store/useUserStore';
@@ -14,9 +15,9 @@ export default function ProgressScreen() {
   const stats = useUserStore(s => s.stats);
   const [weekXP, setWeekXP] = useState<DayXP[]>([]);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     getLast7DaysXP().then(setWeekXP);
-  }, []);
+  }, []));
 
   const maxXP = Math.max(...weekXP.map(d => d.xp), 1);
 

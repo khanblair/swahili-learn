@@ -1,15 +1,14 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, SafeAreaView, StyleSheet } from 'react-native';
-import { createMMKV } from 'react-native-mmkv';
 import { Ionicons } from '@expo/vector-icons';
+import { createStorage } from '../../src/utils/storage';
 import { useTheme } from '../../src/hooks/useTheme';
 import { useUserStore } from '../../src/store/useUserStore';
 import { ProgressBar } from '../../src/components/ProgressBar';
 import { getLevel, getLevelProgress, getXPToNextLevel } from '../../src/engine/xp';
 import { textStyles } from '../../src/theme/typography';
 
-const storage = createMMKV({ id: 'settings' });
-const appStorage = createMMKV({ id: 'app' });
+const settings = createStorage('settings');
 const DAILY_GOALS = [10, 20, 30];
 
 export default function ProfileScreen() {
@@ -17,9 +16,9 @@ export default function ProfileScreen() {
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const stats = useUserStore(s => s.stats);
 
-  const [name, setName] = useState(storage.getString('display_name') ?? '');
-  const [dailyGoal, setDailyGoal] = useState(storage.getNumber('daily_goal') ?? 20);
-  const [themeMode, setThemeMode] = useState(storage.getString('theme') ?? 'system');
+  const [name, setName] = useState(settings.getString('display_name') ?? '');
+  const [dailyGoal, setDailyGoal] = useState(settings.getNumber('daily_goal') ?? 20);
+  const [themeMode, setThemeMode] = useState(settings.getString('theme') ?? 'system');
 
   const xp = stats?.total_xp ?? 0;
   const level = getLevel(xp);
@@ -28,18 +27,18 @@ export default function ProfileScreen() {
 
   function saveName(text: string) {
     setName(text);
-    storage.set('display_name', text);
+    settings.set('display_name', text);
   }
 
   function selectGoal(goal: number) {
     setDailyGoal(goal);
-    storage.set('daily_goal', goal);
+    settings.set('daily_goal', goal);
   }
 
   function cycleTheme() {
     const next = themeMode === 'system' ? 'light' : themeMode === 'light' ? 'dark' : 'system';
     setThemeMode(next);
-    storage.set('theme', next);
+    settings.set('theme', next);
   }
 
   const themeIcon = themeMode === 'dark' ? 'moon' : themeMode === 'light' ? 'sunny' : 'contrast';

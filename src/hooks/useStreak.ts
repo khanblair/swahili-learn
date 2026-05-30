@@ -1,8 +1,8 @@
 import { useCallback } from 'react';
-import { createMMKV } from 'react-native-mmkv';
+import { createStorage } from '../utils/storage';
 import { useUserStore } from '../store/useUserStore';
 
-const storage = createMMKV({ id: 'streak' });
+const storage = createStorage('streak');
 const KEY_DATE = 'last_active_date';
 
 function todayISO(): string {
