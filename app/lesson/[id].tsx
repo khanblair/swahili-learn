@@ -15,7 +15,9 @@ import { TranslateExercise } from '../../src/components/exercises/TranslateExerc
 import { ListenExercise } from '../../src/components/exercises/ListenExercise';
 import { MultipleChoiceExercise } from '../../src/components/exercises/MultipleChoiceExercise';
 import { MatchPairsExercise } from '../../src/components/exercises/MatchPairsExercise';
-import { getLessonById, saveLessonProgress } from '../../src/db/queries/lessons';
+import { FillBlankExercise } from '../../src/components/exercises/FillBlankExercise';
+import { RearrangeExercise } from '../../src/components/exercises/RearrangeExercise';
+import { getLessonById, getLessonsByUnit, saveLessonProgress } from '../../src/db/queries/lessons';
 import { getWordsByUnit } from '../../src/db/queries/words';
 import { upsertCard, getCardByWordId } from '../../src/db/queries/cards';
 import { buildQueue } from '../../src/engine/lessonQueue';
@@ -37,7 +39,14 @@ export default function LessonScreen() {
     async function load() {
       const lesson = await getLessonById(Number(id));
       if (!lesson) return;
-      const words = await getWordsByUnit(lesson.unit_id);
+      const allWords = await getWordsByUnit(lesson.unit_id);
+      const allLessons = await getLessonsByUnit(lesson.unit_id);
+      // Divide the unit's words evenly across lessons so each lesson
+      // teaches its own distinct slice (e.g. lesson 0 → words 0-4, etc.)
+      const wordsPerLesson = Math.ceil(allWords.length / Math.max(allLessons.length, 1));
+      const start = lesson.lesson_index * wordsPerLesson;
+      const lessonWords = allWords.slice(start, start + wordsPerLesson);
+      const words = lessonWords.length > 0 ? lessonWords : allWords;
       const queue = buildQueue(words);
       session.startSession(queue);
       setLoaded(true);
@@ -112,12 +121,41 @@ export default function LessonScreen() {
         return <MultipleChoiceExercise exercise={exercise} selectedAnswer={session.currentAnswer as string} feedbackState={session.feedbackState} onSelect={session.setAnswer} />;
       case 'match_pairs':
         return <MatchPairsExercise exercise={exercise} onComplete={handleMatchPairsComplete} />;
+      case 'fill_in_blank':
+        return <FillBlankExercise exercise={exercise} selectedAnswer={session.currentAnswer as string} feedbackState={session.feedbackState} onSelect={session.setAnswer} />;
+      case 'rearrange_sentence':
+        return <RearrangeExercise exercise={exercise} feedbackState={session.feedbackState} onAnswerChange={session.setAnswer} />;
     }
   }
 
-  const canCheck = exercise.type === 'translate'
+  const isArrayAnswer = exercise.type === 'translate' || exercise.type === 'rearrange_sentence';
+  const canCheck = isArrayAnswer
     ? (session.currentAnswer as string[]).length > 0
     : typeof session.currentAnswer === 'string' && session.currentAnswer.length > 0;
+
+  // Answer bar labels vary by exercise type
+  const correctLabel = (() => {
+    switch (exercise.type) {
+      case 'fill_in_blank':
+      case 'listen':
+        return `Correct! "${exercise.word.swahili}"`;
+      case 'rearrange_sentence':
+        return `Correct! ${exercise.correctTiles?.join(' ')}`;
+      default:
+        return `Correct! ${exercise.word.english}`;
+    }
+  })();
+  const wrongLabel = (() => {
+    switch (exercise.type) {
+      case 'fill_in_blank':
+      case 'listen':
+        return `Answer: "${exercise.word.swahili}"`;
+      case 'rearrange_sentence':
+        return `Correct order: ${exercise.correctTiles?.join(' ')}`;
+      default:
+        return `Correct answer: ${exercise.word.english}`;
+    }
+  })();
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -139,8 +177,8 @@ export default function LessonScreen() {
           canCheck={canCheck}
           onCheck={session.checkAnswer}
           onContinue={handleContinue}
-          correctLabel={`Correct! ${exercise.word.english}`}
-          wrongLabel={`Correct answer: ${exercise.word.english}`}
+          correctLabel={correctLabel}
+          wrongLabel={wrongLabel}
         />
       )}
 

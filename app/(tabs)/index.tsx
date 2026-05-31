@@ -7,7 +7,7 @@ import { useTheme } from '../../src/hooks/useTheme';
 import { useUserStore } from '../../src/store/useUserStore';
 import { SkillCard } from '../../src/components/SkillCard';
 import { ProgressBar } from '../../src/components/ProgressBar';
-import { units } from '../../src/content/units';
+import { units, type CefrLevel } from '../../src/content/units';
 import { getUnitCompletionRatio } from '../../src/db/queries/lessons';
 import { getCardCountDue } from '../../src/db/queries/cards';
 import { getLevel } from '../../src/engine/xp';
@@ -47,8 +47,29 @@ export default function HomeScreen() {
     router.push({ pathname: '/unit/[id]', params: { id: unitId } } as any);
   }
 
+  const LEVEL_LABELS: Record<CefrLevel, string> = {
+    A1: 'A1 · Absolute Beginner',
+    A2: 'A2 · Elementary',
+    B1: 'B1 · Intermediate',
+  };
+
+  // Build a flat list of items: either a level header or a unit card
+  type ListItem =
+    | { kind: 'header'; level: CefrLevel }
+    | { kind: 'unit'; unit: typeof units[0]; idx: number };
+
+  const listItems: ListItem[] = [];
+  let lastLevel: CefrLevel | null = null;
+  units.forEach((unit, idx) => {
+    if (unit.level !== lastLevel) {
+      listItems.push({ kind: 'header', level: unit.level });
+      lastLevel = unit.level;
+    }
+    listItems.push({ kind: 'unit', unit, idx });
+  });
+
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.topBar}>
         <View style={styles.row}>
           <Ionicons name="flame" size={22} color={theme.colors.gamification.streak} />
@@ -69,16 +90,27 @@ export default function HomeScreen() {
       </View>
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
-        {units.map((unit, idx) => (
-          <SkillCard
-            key={unit.id}
-            title={unit.title}
-            icon={unit.icon}
-            progress={unitProgress[unit.id] ?? 0}
-            locked={isUnitLocked(idx)}
-            onPress={() => handleUnitPress(unit.id)}
-          />
-        ))}
+        {listItems.map((item, i) => {
+          if (item.kind === 'header') {
+            return (
+              <View key={`header-${i}`} style={styles.levelHeader}>
+                <View style={styles.levelHeaderLine} />
+                <Text style={styles.levelHeaderText}>{LEVEL_LABELS[item.level]}</Text>
+                <View style={styles.levelHeaderLine} />
+              </View>
+            );
+          }
+          return (
+            <SkillCard
+              key={item.unit.id}
+              title={item.unit.title}
+              icon={item.unit.icon}
+              progress={unitProgress[item.unit.id] ?? 0}
+              locked={isUnitLocked(item.idx)}
+              onPress={() => handleUnitPress(item.unit.id)}
+            />
+          );
+        })}
       </ScrollView>
 
       {dueCount > 0 && (
@@ -105,5 +137,8 @@ function makeStyles(theme: ReturnType<typeof useTheme>) {
     scrollContent: { padding: theme.spacing.lg },
     reviewFab: { position: 'absolute', bottom: theme.spacing.xxl, alignSelf: 'center', backgroundColor: theme.colors.brand.primary, borderRadius: theme.radius.full, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, paddingHorizontal: theme.spacing.xl, paddingVertical: theme.spacing.md },
     reviewText: { ...textStyles.bodyBold, color: theme.colors.text.inverse },
+    levelHeader: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, marginTop: theme.spacing.lg, marginBottom: theme.spacing.xs },
+    levelHeaderLine: { flex: 1, height: 1, backgroundColor: theme.colors.border.default },
+    levelHeaderText: { ...textStyles.caption, color: theme.colors.text.secondary, letterSpacing: 1, fontWeight: '700' },
   });
 }

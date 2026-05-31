@@ -84,11 +84,33 @@ export interface UserStats {
   hearts_refill_ts: number;
 }
 
-export type ExerciseType = 'translate' | 'listen' | 'match_pairs' | 'multiple_choice';
+export type ExerciseType =
+  | 'translate'
+  | 'listen'
+  | 'match_pairs'
+  | 'multiple_choice'
+  | 'fill_in_blank'
+  | 'rearrange_sentence';
 
 export interface Exercise {
   type: ExerciseType;
   word: Word;
+  /** multiple_choice + fill_in_blank: answer choices */
   options?: string[];
+  /** match_pairs */
   pairs?: Array<{ left: string; right: string }>;
+  /** fill_in_blank: sentence with _____ placeholder */
+  prompt?: string;
+  /** rearrange_sentence: shuffled Swahili word tiles */
+  tiles?: string[];
+  /** rearrange_sentence: correct tile order */
+  correctTiles?: string[];
+}
+
+export interface ComprehensionQuestion {
+  id: number;
+  story_id: number;
+  question_sw: string;
+  correct: string;
+  options: string[];
 }

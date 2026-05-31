@@ -51,6 +51,12 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       correct = checkListenAnswer(currentAnswer as string, exercise.word.swahili);
     } else if (exercise.type === 'multiple_choice') {
       correct = (currentAnswer as string).toLowerCase() === exercise.word.english.toLowerCase();
+    } else if (exercise.type === 'fill_in_blank') {
+      correct = (currentAnswer as string).toLowerCase() === exercise.word.swahili.toLowerCase();
+    } else if (exercise.type === 'rearrange_sentence') {
+      const given = (currentAnswer as string[]).join(' ').toLowerCase().trim();
+      const expected = (exercise.correctTiles ?? []).join(' ').toLowerCase().trim();
+      correct = given === expected;
     }
 
     set((s) => ({

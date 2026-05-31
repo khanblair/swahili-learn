@@ -1,6 +1,14 @@
 import type { Word, Exercise, ExerciseType } from '../types/content';
 
-const EXERCISE_TYPES: ExerciseType[] = ['translate', 'listen', 'multiple_choice', 'match_pairs'];
+// Cycle order: translate → fill_in_blank → listen → multiple_choice → rearrange_sentence → match_pairs
+const EXERCISE_TYPES: ExerciseType[] = [
+  'translate',
+  'fill_in_blank',
+  'listen',
+  'multiple_choice',
+  'rearrange_sentence',
+  'match_pairs',
+];
 const QUEUE_SIZE = 10;
 
 function shuffle<T>(arr: T[]): T[] {
@@ -16,6 +24,7 @@ function pickType(index: number): ExerciseType {
   return EXERCISE_TYPES[index % EXERCISE_TYPES.length];
 }
 
+// ── English multiple-choice options ────────────────────────────────────────
 function buildOptions(correct: string, allWords: Word[]): string[] {
   const distractors = shuffle(
     allWords.filter(w => w.english !== correct).map(w => w.english)
@@ -23,6 +32,15 @@ function buildOptions(correct: string, allWords: Word[]): string[] {
   return shuffle([correct, ...distractors]);
 }
 
+// ── Swahili options (for fill_in_blank) ────────────────────────────────────
+function buildSwahiliOptions(correct: string, allWords: Word[]): string[] {
+  const distractors = shuffle(
+    allWords.filter(w => w.swahili !== correct).map(w => w.swahili)
+  ).slice(0, 3);
+  return shuffle([correct, ...distractors]);
+}
+
+// ── Word tile pool for translate exercise ──────────────────────────────────
 function buildTranslateTiles(word: Word, allWords: Word[]): string[] {
   const correctTokens = word.english.split(' ');
   const pool = shuffle(
@@ -34,6 +52,7 @@ function buildTranslateTiles(word: Word, allWords: Word[]): string[] {
   return shuffle([...correctTokens, ...pool]);
 }
 
+// ── Match pairs ────────────────────────────────────────────────────────────
 function buildPairs(words: Word[]): Array<{ left: string; right: string }> {
   return shuffle(words.slice(0, 4)).map(w => ({
     left: w.swahili,
@@ -41,6 +60,28 @@ function buildPairs(words: Word[]): Array<{ left: string; right: string }> {
   }));
 }
 
+// ── Fill-in-blank: replace the Swahili word in its example sentence ────────
+function buildFillBlankPrompt(word: Word): string {
+  // Case-insensitive replacement; fallback to plain replace if \b doesn't match
+  const escaped = word.swahili.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  let result = word.example_sw.replace(new RegExp(`\\b${escaped}\\b`, 'i'), '_____');
+  if (result === word.example_sw) {
+    // Word boundary didn't match (possible in Swahili with adjacent punctuation)
+    result = word.example_sw.replace(new RegExp(escaped, 'i'), '_____');
+  }
+  return result;
+}
+
+// ── Rearrange: shuffle words from the example sentence ────────────────────
+function buildRearrangeTiles(word: Word): { tiles: string[]; correctTiles: string[] } {
+  // Strip trailing punctuation so tiles are clean
+  const clean = word.example_sw.replace(/[.!?,]+$/, '');
+  const correctTiles = clean.split(' ').filter(Boolean);
+  const tiles = shuffle([...correctTiles]);
+  return { tiles, correctTiles };
+}
+
+// ── Main queue builder ─────────────────────────────────────────────────────
 export function buildQueue(words: Word[]): Exercise[] {
   if (!words.length) return [];
   const shuffled = shuffle(words);
@@ -52,23 +93,55 @@ export function buildQueue(words: Word[]): Exercise[] {
     const word = shuffled[i % shuffled.length];
     const rawType = pickType(i);
 
-    const type: ExerciseType =
-      rawType === 'match_pairs' && (matchPairsAdded || shuffled.length < 4)
-        ? 'multiple_choice'
-        : rawType;
+    // Resolve type substitutions
+    let type: ExerciseType = rawType;
+
+    if (type === 'match_pairs' && (matchPairsAdded || shuffled.length < 4)) {
+      type = 'multiple_choice';
+    }
+
+    // No audio file → can't do a listen exercise
+    if (type === 'listen' && !word.audio_file) {
+      type = 'multiple_choice';
+    }
+
+    if (type === 'rearrange_sentence') {
+      const { correctTiles } = buildRearrangeTiles(word);
+      // Need at least 3 words in the sentence to make rearranging meaningful
+      if (correctTiles.length < 3) type = 'multiple_choice';
+    }
+
+    if (type === 'fill_in_blank') {
+      const prompt = buildFillBlankPrompt(word);
+      // If the word wasn't found in the example, fall back to multiple_choice
+      if (!prompt.includes('_____')) type = 'multiple_choice';
+    }
 
     if (type === 'match_pairs') matchPairsAdded = true;
 
     const exercise: Exercise = { type, word };
 
-    if (type === 'translate') {
-      exercise.options = buildTranslateTiles(word, shuffled);
-    }
-    if (type === 'multiple_choice') {
-      exercise.options = buildOptions(word.english, shuffled);
-    }
-    if (type === 'match_pairs') {
-      exercise.pairs = buildPairs(shuffled);
+    switch (type) {
+      case 'translate':
+        exercise.options = buildTranslateTiles(word, shuffled);
+        break;
+      case 'multiple_choice':
+        exercise.options = buildOptions(word.english, shuffled);
+        break;
+      case 'match_pairs':
+        exercise.pairs = buildPairs(shuffled);
+        break;
+      case 'fill_in_blank': {
+        exercise.prompt = buildFillBlankPrompt(word);
+        exercise.options = buildSwahiliOptions(word.swahili, shuffled);
+        break;
+      }
+      case 'rearrange_sentence': {
+        const { tiles, correctTiles } = buildRearrangeTiles(word);
+        exercise.tiles = tiles;
+        exercise.correctTiles = correctTiles;
+        break;
+      }
     }
 
     queue.push(exercise);
@@ -77,6 +150,7 @@ export function buildQueue(words: Word[]): Exercise[] {
   return queue;
 }
 
+// ── Levenshtein (for listen exercise fuzzy matching) ───────────────────────
 export function levenshtein(a: string, b: string): number {
   const m = a.length, n = b.length;
   const dp: number[][] = Array.from({ length: m + 1 }, (_, i) =>

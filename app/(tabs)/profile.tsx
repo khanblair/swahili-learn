@@ -45,7 +45,7 @@ export default function ProfileScreen() {
   const themeIcon = themeMode === 'dark' ? 'moon' : themeMode === 'light' ? 'sunny' : 'contrast';
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.title}>Profile</Text>
 
