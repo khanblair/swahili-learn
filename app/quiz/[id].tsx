@@ -55,7 +55,7 @@ export default function QuizScreen() {
 
   if (done) {
     return (
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <View style={styles.result}>
           <Ionicons name="trophy" size={80} color={theme.colors.gamification.xp} />
           <Text style={styles.hero}>{score}/{queue.length}</Text>
@@ -73,7 +73,7 @@ export default function QuizScreen() {
   const exercise = queue[index];
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <View style={styles.topBar}>
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="close" size={24} color={theme.colors.icon.default} />

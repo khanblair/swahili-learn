@@ -81,7 +81,7 @@ export default function ReviewScreen() {
     : typeof session.currentAnswer === 'string' && session.currentAnswer.length > 0;
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <View style={styles.topBar}>
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="close" size={24} color={theme.colors.icon.default} />

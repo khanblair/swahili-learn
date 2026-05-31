@@ -83,7 +83,7 @@ export default function StoryScreen() {
   if (phase === 'reading') {
     if (!lines.length) return null;
     return (
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <View style={styles.topBar}>
           <TouchableOpacity onPress={() => router.back()}>
             <Ionicons name="close" size={24} color={theme.colors.icon.default} />
@@ -123,7 +123,7 @@ export default function StoryScreen() {
   if (phase === 'questions') {
     const q = questions[qIndex];
     return (
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <View style={styles.topBar}>
           <TouchableOpacity onPress={() => router.back()}>
             <Ionicons name="close" size={24} color={theme.colors.icon.default} />

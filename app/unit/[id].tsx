@@ -44,7 +44,7 @@ export default function UnitDetailScreen() {
   const completedCount = lessons.filter(l => l.progress?.completed).length;
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color={theme.colors.icon.default} />
