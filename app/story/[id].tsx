@@ -5,7 +5,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../src/hooks/useTheme';
 import { AudioButton } from '../../src/components/AudioButton';
-import { useAudio } from '../../src/hooks/useAudio';
+import { useSpeech } from '../../src/hooks/useSpeech';
 import { getStoryLines, markStoryCompleted } from '../../src/db/queries/stories';
 import { storyQuestions } from '../../src/content/stories';
 import { textStyles } from '../../src/theme/typography';
@@ -33,7 +33,7 @@ export default function StoryScreen() {
   const [score, setScore] = useState(0);
 
   const currentLine = lines[current];
-  const audio = useAudio(currentLine?.audio_file ?? null);
+  const audio = useSpeech(currentLine?.swahili ?? null);
 
   useEffect(() => {
     getStoryLines(storyId).then(setLines);

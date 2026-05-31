@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo } from 'react';
 import { View, Text, TextInput, StyleSheet } from 'react-native';
 import { useTheme } from '../../hooks/useTheme';
-import { useAudio } from '../../hooks/useAudio';
+import { useSpeech } from '../../hooks/useSpeech';
 import { AudioButton } from '../AudioButton';
 import { textStyles } from '../../theme/typography';
 import type { Exercise } from '../../types/content';
@@ -16,10 +16,10 @@ interface Props {
 export function ListenExercise({ exercise, typedAnswer, feedbackState, onChangeText }: Props) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
-  const audio = useAudio(exercise.word.audio_file);
+  const audio = useSpeech(exercise.word.swahili);
 
   useEffect(() => {
-    if (audio.hasAudio) audio.play();
+    audio.play();
   }, [exercise.word.id]);
 
   const borderColor =

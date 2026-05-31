@@ -103,11 +103,6 @@ export function buildQueue(words: Word[]): Exercise[] {
       type = 'multiple_choice';
     }
 
-    // No audio file → can't do a listen exercise
-    if (type === 'listen' && !word.audio_file) {
-      type = 'multiple_choice';
-    }
-
     if (type === 'rearrange_sentence') {
       const { correctTiles } = buildRearrangeTiles(word);
       // Need at least 3 words in the sentence to make rearranging meaningful
