@@ -42,12 +42,15 @@ function buildSwahiliOptions(correct: string, allWords: Word[]): string[] {
 
 // ── Word tile pool for translate exercise ──────────────────────────────────
 function buildTranslateTiles(word: Word, allWords: Word[]): string[] {
-  const correctTokens = word.english.split(' ');
+  // Use only the first alternative before any ' / ' so we never include '/' as a tile
+  // e.g. "Good / Fine" → "Good", "Sorry / Excuse me" → "Sorry"
+  const primaryEnglish = word.english.split(' / ')[0].trim();
+  const correctTokens = primaryEnglish.split(' ');
   const pool = shuffle(
     allWords
       .filter(w => w.id !== word.id)
-      .flatMap(w => w.english.split(' '))
-      .filter(t => !correctTokens.includes(t))
+      .flatMap(w => w.english.split(' / ')[0].trim().split(' '))
+      .filter(t => !correctTokens.includes(t) && t !== '/')
   ).slice(0, Math.max(3, 6 - correctTokens.length));
   return shuffle([...correctTokens, ...pool]);
 }

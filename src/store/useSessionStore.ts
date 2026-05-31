@@ -44,9 +44,12 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
     let correct = false;
     if (exercise.type === 'translate') {
-      const selected = (currentAnswer as string[]).join(' ').toLowerCase();
-      const expected = exercise.word.english.toLowerCase();
-      correct = selected === expected;
+      const selected = (currentAnswer as string[]).join(' ').toLowerCase().trim();
+      // Accept any slash-separated alternative: "Good / Fine" → accept "good" OR "fine"
+      const alternatives = exercise.word.english
+        .split(' / ')
+        .map(a => a.trim().toLowerCase());
+      correct = alternatives.some(alt => selected === alt);
     } else if (exercise.type === 'listen') {
       correct = checkListenAnswer(currentAnswer as string, exercise.word.swahili);
     } else if (exercise.type === 'multiple_choice') {
